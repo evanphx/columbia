@@ -56,8 +56,17 @@ func NewSliceMemory(b []byte) *SliceMemory {
 // when it detects an out of bounds access to the linear memory.
 var ErrOutOfBoundsMemoryAccess = errors.New("exec: out of bounds memory access")
 
+var (
+	lastBase   int
+	lastOffset int
+)
+
 func (vm *VM) fetchBaseAddr() int {
-	return int(vm.fetchUint32() + uint32(vm.popInt32()))
+	base := vm.popInt32()
+	offset := vm.fetchUint32()
+	lastBase = int(base)
+	lastOffset = int(offset)
+	return int(offset + uint32(base))
 }
 
 // curMem returns a slice to the memeory segment pointed to by
@@ -137,39 +146,56 @@ func (vm *VM) f64Load() {
 	vm.pushFloat64(math.Float64frombits(endianess.Uint64(vm.curMem(8))))
 }
 
+func debugLoc(vm *VM, v interface{}) {
+	/*
+		if lastBase == 2568 {
+			fmt.Printf("STORE (pid=%d): %d+%d <- %v (%p)\n", vm.Pid, lastBase, lastOffset, v, vm.memory)
+			os.Stderr.Write(vm.Backtrace())
+		}
+	*/
+}
+
 func (vm *VM) i32Store() {
 	v := vm.popUint32()
 	endianess.PutUint32(vm.curMem(4), v)
+
+	debugLoc(vm, v)
 }
 
 func (vm *VM) i32Store8() {
 	v := byte(uint8(vm.popUint32()))
 	vm.curMem(1)[0] = v
+	debugLoc(vm, v)
 }
 
 func (vm *VM) i32Store16() {
 	v := uint16(vm.popUint32())
 	endianess.PutUint16(vm.curMem(2), v)
+	debugLoc(vm, v)
 }
 
 func (vm *VM) i64Store() {
 	v := vm.popUint64()
 	endianess.PutUint64(vm.curMem(8), v)
+	debugLoc(vm, v)
 }
 
 func (vm *VM) i64Store8() {
 	v := byte(uint8(vm.popUint64()))
 	vm.curMem(1)[0] = v
+	debugLoc(vm, v)
 }
 
 func (vm *VM) i64Store16() {
 	v := uint16(vm.popUint64())
 	endianess.PutUint16(vm.curMem(2), v)
+	debugLoc(vm, v)
 }
 
 func (vm *VM) i64Store32() {
 	v := uint32(vm.popUint64())
 	endianess.PutUint32(vm.curMem(4), v)
+	debugLoc(vm, v)
 }
 
 func (vm *VM) currentMemory() {

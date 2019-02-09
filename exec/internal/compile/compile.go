@@ -134,12 +134,14 @@ type block struct {
 // Compile rewrites WebAssembly bytecode from its disassembly.
 // TODO(vibhavp): Add options for optimizing code. Operators like i32.reinterpret/f32
 // are no-ops, and can be safely removed.
-func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
+func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable, map[int]int64) {
 	buffer := new(bytes.Buffer)
 	branchTables := []*BranchTable{}
 
 	curBlockDepth := -1
 	blocks := make(map[int]*block) // maps nesting depths (labels) to blocks
+
+	offsetMap := make(map[int]int64)
 
 	blocks[-1] = &block{}
 	for _, instr := range disassembly {
@@ -153,6 +155,8 @@ func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
 			// discarded.
 			instr.Immediates = []interface{}{instr.Immediates[1].(uint32)}
 		case ops.If:
+			offsetMap[buffer.Len()] = instr.Offset
+
 			curBlockDepth++
 			buffer.WriteByte(OpJmpZ)
 			blocks[curBlockDepth] = &block{
@@ -181,8 +185,10 @@ func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
 			}
 			continue
 		case ops.Else:
+			offsetMap[buffer.Len()] = instr.Offset
 			ifInstr := disassembly[instr.Block.ElseIfIndex] // the corresponding `if` instruction for this else
 			if ifInstr.NewStack != nil && ifInstr.NewStack.StackTopDiff != 0 {
+
 				// add code for jumping out of a taken if branch
 				if ifInstr.NewStack.PreserveTop {
 					buffer.WriteByte(OpDiscardPreserveTop)
@@ -209,6 +215,7 @@ func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
 			block := blocks[depth]
 
 			if instr.NewStack.StackTopDiff != 0 {
+				offsetMap[buffer.Len()] = instr.Offset
 				// when exiting a block, discard elements to
 				// restore stack height.
 				if instr.NewStack.PreserveTop {
@@ -243,6 +250,7 @@ func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
 			curBlockDepth--
 			continue
 		case ops.Br:
+			offsetMap[buffer.Len()] = instr.Offset
 			if instr.NewStack != nil && instr.NewStack.StackTopDiff != 0 {
 				if instr.NewStack.PreserveTop {
 					buffer.WriteByte(OpDiscardPreserveTop)
@@ -259,6 +267,7 @@ func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
 			binary.Write(buffer, binary.LittleEndian, int64(0))
 			continue
 		case ops.BrIf:
+			offsetMap[buffer.Len()] = instr.Offset
 			buffer.WriteByte(OpJmpNz)
 			label := int(instr.Immediates[0].(uint32))
 			block := blocks[curBlockDepth-int(label)]
@@ -278,6 +287,7 @@ func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
 			binary.Write(buffer, binary.LittleEndian, stackTopDiff)
 			continue
 		case ops.BrTable:
+			offsetMap[buffer.Len()] = instr.Offset
 			branchTable := &BranchTable{
 				// we subtract one for the implicit block created by
 				// the function body
@@ -310,6 +320,8 @@ func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
 			binary.Write(buffer, binary.LittleEndian, int64(len(branchTables)-1))
 		}
 
+		offsetMap[buffer.Len()] = instr.Offset
+
 		buffer.WriteByte(instr.Op.Code)
 		for _, imm := range instr.Immediates {
 			err := binary.Write(buffer, binary.LittleEndian, imm)
@@ -333,7 +345,7 @@ func Compile(disassembly []disasm.Instr) ([]byte, []*BranchTable) {
 	for _, table := range branchTables {
 		table.patchedAddrs = nil
 	}
-	return buffer.Bytes(), branchTables
+	return buffer.Bytes(), branchTables, offsetMap
 }
 
 // replace the address starting at start with addr

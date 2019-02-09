@@ -1,11 +1,14 @@
-package columbia
+package syscalls
 
 import (
+	"context"
+
 	"github.com/evanphx/columbia/abi/linux"
+	"github.com/evanphx/columbia/kernel"
 	hclog "github.com/hashicorp/go-hclog"
 )
 
-func sysMmap(l hclog.Logger, p *Process, args sysArgs) int32 {
+func sysMmap(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs) int32 {
 	var (
 		ptr  = args.Args.R0
 		size = args.Args.R1
@@ -23,16 +26,16 @@ func sysMmap(l hclog.Logger, p *Process, args sysArgs) int32 {
 
 	// Require exactly one of MAP_PRIVATE and MAP_SHARED.
 	if private == shared {
-		return -EINVAL
+		return -kernel.EINVAL
 	}
 
 	if anon {
 		ptr = -1
 	}
 
-	reg, err := p.mem.NewRegion(ptr, size)
+	reg, err := p.Mem.NewRegion(ptr, size)
 	if err != nil {
-		return -EINVAL
+		return -kernel.EINVAL
 	}
 
 	l.Info("new region", "addr", reg.Start, "size", reg.Size)
@@ -41,5 +44,5 @@ func sysMmap(l hclog.Logger, p *Process, args sysArgs) int32 {
 }
 
 func init() {
-	syscalls[192] = sysMmap
+	Syscalls[192] = sysMmap
 }

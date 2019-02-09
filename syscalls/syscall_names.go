@@ -1,4 +1,4 @@
-package columbia
+package syscalls
 
 var SyscallNames = map[int32]string{
 	// Generted using the following command:

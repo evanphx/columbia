@@ -1,4 +1,4 @@
-package columbia
+package kernel
 
 const (
 	EPERM           = 1

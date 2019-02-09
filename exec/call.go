@@ -25,6 +25,10 @@ func (vm *VM) call() {
 	vm.funcs[index].call(vm, int64(index))
 }
 
+func (vm *VM) ResolveFromTable(tableIndex int64) uint32 {
+	return vm.module.TableIndexSpace[0][tableIndex]
+}
+
 func (vm *VM) callIndirect() {
 	index := vm.fetchUint32()
 	fnExpect := vm.module.Types.Entries[index]

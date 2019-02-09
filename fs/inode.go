@@ -3,6 +3,7 @@ package fs
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"time"
 )
@@ -150,6 +151,7 @@ type InodeOps interface {
 	LookupChild(ctx context.Context, inode *Inode, name string) (*Inode, error)
 	UnstableAttr(ctx context.Context, inode *Inode) (*InodeUnstableAttr, error)
 	ReadLink(ctx context.Context, inode *Inode) (string, error)
+	Reader(inode *Inode) (io.Reader, error)
 }
 
 type Inode struct {
@@ -157,10 +159,4 @@ type Inode struct {
 	MountRelative string
 
 	Ops InodeOps
-}
-
-type Dirent struct {
-	Name   string
-	Parent *Dirent
-	Inode  *Inode
 }

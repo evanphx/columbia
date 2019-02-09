@@ -19,11 +19,15 @@ type function interface {
 
 type compiledFunction struct {
 	code           []byte
+	file           string
+	line           int
 	branchTables   []*compile.BranchTable
 	maxDepth       int  // maximum stack depth reached while executing the function body
 	totalLocalVars int  // number of local variables used by the function
 	args           int  // number of arguments the function accepts
 	returns        bool // whether the function returns a value
+	name           string
+	offsets        map[int]int64
 }
 
 type goFunction struct {
@@ -80,7 +84,16 @@ func (fn goFunction) call(vm *VM, index int64) {
 		args[i] = val
 	}
 
+	pre := vm.frame
+
 	rtrns := fn.val.Call(args)
+
+	// If the caller manipulated the frames, then presume it is going to handle
+	// pushing the return value directly, so we ignore it.
+	if vm.frame != pre {
+		return
+	}
+
 	for i, out := range rtrns {
 		kind := out.Kind()
 		switch kind {
@@ -96,7 +109,7 @@ func (fn goFunction) call(vm *VM, index int64) {
 	}
 }
 
-func (compiled compiledFunction) call(vm *VM, index int64) {
+func (compiled *compiledFunction) call(vm *VM, index int64) {
 	callerFrame := vm.frame
 	vm.frameIdx++
 	nextFrame := &vm.frames[vm.frameIdx]
@@ -105,19 +118,23 @@ func (compiled compiledFunction) call(vm *VM, index int64) {
 	// containers the arguments as the locals (ie no copy)
 	nextFrame.fp = callerFrame.sp - int64(compiled.args) + 1
 
-	nextFrame.sp = callerFrame.sp + (int64(compiled.totalLocalVars) - int64(compiled.args))
+	freeLocals := int64(compiled.totalLocalVars) - int64(compiled.args)
+
+	nextFrame.sp = callerFrame.sp + freeLocals
 
 	// Backup the callers sp now so when it's restored, the stack is correct.
 	callerFrame.sp -= int64(compiled.args)
 
 	/*
-		for i := range vm.stack[nextFrame.fp+int64(compiled.args) : nextFrame.sp] {
-			vm.stack[i] = 0
+		if freeLocals > 0 {
+			for i := nextFrame.fp + int64(compiled.args); i <= nextFrame.sp; i++ {
+				vm.stack[i] = 0
+			}
 		}
 	*/
 
 	nextFrame.ip = 0
-	nextFrame.fn = &compiled
+	nextFrame.fn = compiled
 	nextFrame.code = compiled.code
 
 	Debugf("|> call frame=%d sp=%d fp=%d args=%d local=%d\n", vm.frameIdx, nextFrame.sp,
@@ -146,23 +163,9 @@ func (compiled compiledFunction) call(vm *VM, index int64) {
 	}
 
 	/*
-		prevCtxt := vm.ctx
-
-		vm.ctx = context{
-			stack:   newStack,
-			locals:  locals,
-			code:    compiled.code,
-			pc:      0,
-			curFunc: index,
+		for i := 0; i < vm.frameIdx; i++ {
+			fmt.Print("  ")
 		}
-
-		rtrn := vm.execCode(compiled)
-
-		//restore execution context
-		vm.ctx = prevCtxt
-
-		if compiled.returns {
-			vm.pushUint64(rtrn)
-		}
+		fmt.Printf("%s\n", vm.Location())
 	*/
 }

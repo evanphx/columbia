@@ -1,9 +1,10 @@
-package columbia
+package syscalls
 
 import (
-	"encoding/binary"
+	"context"
 	"time"
 
+	"github.com/evanphx/columbia/kernel"
 	hclog "github.com/hashicorp/go-hclog"
 )
 
@@ -14,7 +15,7 @@ type timespec struct {
 
 var start = time.Now()
 
-func sysClockGetTime(l hclog.Logger, p *Process, args sysArgs) int32 {
+func sysClockGetTime(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs) int32 {
 	var (
 		clk = args.Args.R0
 		ptr = args.Args.R1
@@ -38,10 +39,10 @@ func sysClockGetTime(l hclog.Logger, p *Process, args sysArgs) int32 {
 			NSec: int32(ns % 1000000000),
 		}
 	default:
-		return -EINVAL
+		return -kernel.EINVAL
 	}
 
-	err := binary.Write(writeAdapter{sub: p, offset: int64(ptr)}, binary.LittleEndian, ts)
+	err := p.CopyOut(ptr, ts)
 	if err != nil {
 		return -1
 	}
@@ -50,5 +51,5 @@ func sysClockGetTime(l hclog.Logger, p *Process, args sysArgs) int32 {
 }
 
 func init() {
-	syscalls[265] = sysClockGetTime
+	Syscalls[265] = sysClockGetTime
 }

@@ -2,6 +2,7 @@ package tarfs
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"io"
 	"io/ioutil"
@@ -140,4 +141,14 @@ func (t *TarFS) ReadLink(ctx context.Context, inode *fs.Inode) (string, error) {
 	}
 
 	return entry.hdr.Linkname, nil
+}
+
+func (t *TarFS) Reader(inode *fs.Inode) (io.Reader, error) {
+	entry, ok := t.entries[inode.MountRelative]
+	if !ok {
+		return nil, fs.ErrUnknownPath
+	}
+
+	return bytes.NewReader(entry.body), nil
+
 }

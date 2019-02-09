@@ -1,16 +1,29 @@
-package columbia
+package memory
 
 import (
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/pkg/errors"
 )
 
-const wasmPageSize = 65536 // (64 KB)
+const WasmPageSize = 65536 // (64 KB)
 
 type Region struct {
 	Start, Size int32
 
 	linear []byte
+}
+
+func (reg *Region) dup() *Region {
+	child := &Region{}
+
+	// shallow dup
+	*child = *reg
+
+	child.linear = make([]byte, len(child.linear))
+
+	copy(child.linear, reg.linear)
+
+	return child
 }
 
 func (reg *Region) Contains(x int32) bool {
@@ -26,16 +39,16 @@ func (reg *Region) Contains(x int32) bool {
 }
 
 func pageRound(sz int32) int32 {
-	if sz < wasmPageSize {
-		return wasmPageSize
+	if sz < WasmPageSize {
+		return WasmPageSize
 	}
 
-	diff := sz % wasmPageSize
+	diff := sz % WasmPageSize
 	if diff == 0 {
 		return sz
 	}
 
-	return sz + (wasmPageSize - diff)
+	return sz + (WasmPageSize - diff)
 }
 
 func (reg *Region) Project(addr, sz int32) []byte {
@@ -66,6 +79,20 @@ func NewVirtualMemory() *VirtualMemory {
 	return &VirtualMemory{
 		nextMmapStart: 0x10000,
 	}
+}
+
+func (vm *VirtualMemory) Fork() *VirtualMemory {
+	child := &VirtualMemory{
+		nextMmapStart: vm.nextMmapStart,
+		size:          vm.size,
+		regions:       make([]*Region, len(vm.regions)),
+	}
+
+	for i, reg := range vm.regions {
+		child.regions[i] = reg.dup()
+	}
+
+	return child
 }
 
 func (vm *VirtualMemory) Size() int {

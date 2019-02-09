@@ -4,8 +4,13 @@
 
 package exec
 
+import "fmt"
+
 func (vm *VM) getLocal() {
 	index := vm.fetchUint32()
+	if len(vm.stack) <= int(vm.frame.fp+int64(index)) {
+		fmt.Printf("OOB %d <= %d\n", len(vm.stack), vm.frame.fp+int64(index))
+	}
 	vm.pushUint64(vm.stack[vm.frame.fp+int64(index)])
 }
 

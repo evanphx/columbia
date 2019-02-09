@@ -1,12 +1,14 @@
-package columbia
+package syscalls
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/evanphx/columbia/kernel"
 	hclog "github.com/hashicorp/go-hclog"
 )
 
-func sysOpen(l hclog.Logger, p *Process, args sysArgs) int32 {
+func sysOpen(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs) int32 {
 	var (
 		ptr  = args.Args.R0
 		mode = args.Args.R1
@@ -23,5 +25,5 @@ func sysOpen(l hclog.Logger, p *Process, args sysArgs) int32 {
 }
 
 func init() {
-	syscalls[5] = sysOpen
+	Syscalls[5] = sysOpen
 }
