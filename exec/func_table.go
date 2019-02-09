@@ -5,7 +5,7 @@
 package exec
 
 import (
-	ops "github.com/go-interpreter/wagon/wasm/operators"
+	ops "github.com/evanphx/columbia/wasm/operators"
 )
 
 func (vm *VM) newFuncTable() {

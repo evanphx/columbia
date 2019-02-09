@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
-	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 )
@@ -34,8 +32,6 @@ func (m *MountNamespace) SetRoot(i *Inode) {
 var ErrNotDirectory = errors.New("not a directory")
 
 func (m *MountNamespace) LookupPath(ctx context.Context, path string) (*Dirent, error) {
-	hclog.L().Info("lookup path", "path", path)
-
 	dirent, err := m.LookupDirent(ctx, path)
 	if err != nil {
 		return nil, err
@@ -67,8 +63,6 @@ func (m *MountNamespace) LookupDirent(ctx context.Context, path string) (*Dirent
 	sections := strings.Split(path, "/")
 
 	cur := m.Root
-
-	spew.Dump(sections)
 
 	for _, part := range sections {
 		if cur.Inode.StableAttr.Type != Directory {

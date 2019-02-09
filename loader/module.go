@@ -1,7 +1,7 @@
 package loader
 
 import (
-	"github.com/go-interpreter/wagon/wasm"
+	"github.com/evanphx/columbia/wasm"
 )
 
 type Module struct {

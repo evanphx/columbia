@@ -4,8 +4,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/go-interpreter/wagon/validate"
-	"github.com/go-interpreter/wagon/wasm"
+	"github.com/evanphx/columbia/wasm"
+	"github.com/evanphx/columbia/wasm/validate"
 	hclog "github.com/hashicorp/go-hclog"
 )
 
@@ -50,7 +50,6 @@ func (l *Loader) Load(r io.Reader, env *wasm.Module) (*Module, error) {
 }
 
 func (l *Loader) importer(name string) (*wasm.Module, error) {
-	l.L.Info("importer", "name", name)
 	if name == "env" {
 		return l.env, nil
 	}

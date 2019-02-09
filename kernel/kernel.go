@@ -1,6 +1,6 @@
 package kernel
 
-import "github.com/go-interpreter/wagon/wasm"
+import "github.com/evanphx/columbia/wasm"
 
 type Kernel struct {
 	env *wasm.Module

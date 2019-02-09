@@ -8,7 +8,7 @@ import (
 	"github.com/evanphx/columbia/exec"
 	"github.com/evanphx/columbia/kernel"
 	"github.com/evanphx/columbia/syscalls"
-	"github.com/go-interpreter/wagon/wasm"
+	"github.com/evanphx/columbia/wasm"
 	hclog "github.com/hashicorp/go-hclog"
 )
 
@@ -31,7 +31,7 @@ func (w *WasmInterface) syscall0(ctx context.Context, idx int32) int32 {
 		return -abi.ENOSYS
 	}
 
-	w.L.Info("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx])
+	w.L.Trace("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx])
 
 	return w.invokeSyscall(ctx, syscalls.SysArgs{Index: idx})
 }
@@ -42,7 +42,7 @@ func (w *WasmInterface) syscall1(ctx context.Context, idx, a int32) int32 {
 		return -abi.ENOSYS
 	}
 
-	w.L.Info("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a)
+	w.L.Trace("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a)
 	return w.invokeSyscall(ctx, syscalls.SysArgs{Index: idx, Args: syscalls.SyscallRequest{R0: a}})
 }
 
@@ -52,7 +52,7 @@ func (w *WasmInterface) syscall2(ctx context.Context, idx, a, b int32) int32 {
 		return -abi.ENOSYS
 	}
 
-	w.L.Info("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b)
+	w.L.Trace("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b)
 	return w.invokeSyscall(ctx, syscalls.SysArgs{Index: idx, Args: syscalls.SyscallRequest{R0: a, R1: b}})
 }
 
@@ -62,7 +62,7 @@ func (w *WasmInterface) syscall3(ctx context.Context, idx, a, b, c int32) int32 
 		return -abi.ENOSYS
 	}
 
-	w.L.Info("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b, "c", c)
+	w.L.Trace("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b, "c", c)
 	return w.invokeSyscall(ctx, syscalls.SysArgs{Index: idx, Args: syscalls.SyscallRequest{R0: a, R1: b, R2: c}})
 }
 
@@ -72,7 +72,7 @@ func (w *WasmInterface) syscall4(ctx context.Context, idx, a, b, c, d int32) int
 		return -abi.ENOSYS
 	}
 
-	w.L.Info("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b, "c", c, "d", d)
+	w.L.Trace("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b, "c", c, "d", d)
 	return w.invokeSyscall(ctx, syscalls.SysArgs{Index: idx, Args: syscalls.SyscallRequest{R0: a, R1: b, R2: c, R3: d}})
 }
 
@@ -82,7 +82,7 @@ func (w *WasmInterface) syscall5(ctx context.Context, idx, a, b, c, d, e int32) 
 		return -abi.ENOSYS
 	}
 
-	w.L.Info("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b, "c", c, "d", d, "e", e)
+	w.L.Trace("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b, "c", c, "d", d, "e", e)
 	return w.invokeSyscall(ctx, syscalls.SysArgs{Index: idx, Args: syscalls.SyscallRequest{R0: a, R1: b, R2: c, R3: d, R4: e}})
 }
 
@@ -92,7 +92,7 @@ func (w *WasmInterface) syscall6(ctx context.Context, idx, a, b, c, d, e, f int3
 		return -abi.ENOSYS
 	}
 
-	w.L.Info("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b, "c", c, "d", d, "e", e, "f", f)
+	w.L.Trace("syscall", "pid", p.Pid, "index", idx, "name", syscalls.SyscallNames[idx], "a", a, "b", b, "c", c, "d", d, "e", e, "f", f)
 	return w.invokeSyscall(ctx, syscalls.SysArgs{Index: idx, Args: syscalls.SyscallRequest{R0: a, R1: b, R2: c, R3: d, R4: e, R5: f}})
 }
 
@@ -112,7 +112,7 @@ func (w *WasmInterface) syscall(ctx context.Context, idx, addr int32) int32 {
 		return -1
 	}
 
-	w.L.Info("syscall", "pid", p.Pid, "ip", p.Vm.IP(), "index", idx, "name", syscalls.SyscallNames[idx], "req", args.Args)
+	w.L.Trace("syscall", "pid", p.Pid, "ip", p.Vm.IP(), "index", idx, "name", syscalls.SyscallNames[idx], "req", args.Args)
 
 	return w.invokeSyscall(ctx, args)
 }

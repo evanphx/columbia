@@ -38,8 +38,6 @@ func sysMmap(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs) 
 		return -kernel.EINVAL
 	}
 
-	l.Info("new region", "addr", reg.Start, "size", reg.Size)
-
 	return reg.Start
 }
 

@@ -18,11 +18,9 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/evanphx/columbia/exec/internal/compile"
 	"github.com/evanphx/columbia/log"
-	"github.com/go-interpreter/wagon/disasm"
-	"github.com/go-interpreter/wagon/wasm"
-	"github.com/go-interpreter/wagon/wasm/operators"
-	ops "github.com/go-interpreter/wagon/wasm/operators"
-	hclog "github.com/hashicorp/go-hclog"
+	"github.com/evanphx/columbia/wasm"
+	"github.com/evanphx/columbia/wasm/disasm"
+	ops "github.com/evanphx/columbia/wasm/operators"
 	"github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 )
@@ -355,7 +353,6 @@ func NewVM(ctx gcontext.Context, module *wasm.Module, memory Memory) (*VM, error
 
 		if memory == nil {
 			memory = NewSliceMemory(make([]byte, sz))
-			hclog.L().Info("initalize slice memory", "size", sz)
 		}
 
 		slice, err := memory.Project(0, sz)
@@ -616,8 +613,6 @@ func (vm *VM) ExecCode(fnIndex int64, args ...uint64) (rtrn interface{}, err err
 
 	vm.frame.sp = int64(len(args) + compiled.totalLocalVars - 1)
 
-	hclog.L().Info("start", "sp", vm.frame.sp, "fp", vm.frame.fp, "args", len(args), "locals", compiled.totalLocalVars)
-
 	res := vm.execCode()
 	if compiled.returns {
 		rtrnType := vm.module.GetFunction(int(fnIndex)).Sig.ReturnTypes[0]
@@ -651,7 +646,7 @@ func (vm *VM) execCode() uint64 {
 	instloop:
 		for int(vm.frame.ip) < len(vm.frame.code) && !vm.abort {
 			op := vm.frame.code[vm.frame.ip]
-			desc, err := operators.New(op)
+			desc, err := ops.New(op)
 			if err != nil {
 				panic(err)
 			}

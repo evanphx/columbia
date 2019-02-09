@@ -73,7 +73,6 @@ func sysExecve(ctx context.Context, l hclog.Logger, task *kernel.Task, args SysA
 		return -abi.ENOEXEC
 	}
 
-	l.Info("exec process", "path", string(path))
 	go task.Process.Kernel.StartProcess(task.Process)
 
 	return 0

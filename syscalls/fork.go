@@ -19,10 +19,6 @@ func sysFork(ctx context.Context, l hclog.Logger, p *kernel.Task, arg SysArgs) i
 
 	go child.Restart(0)
 
-	time.Sleep(1 * time.Second)
-
-	l.Info("new child", "pid", child.Pid)
-
 	return int32(child.Pid)
 }
 

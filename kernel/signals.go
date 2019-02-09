@@ -3,7 +3,6 @@ package kernel
 import (
 	"sync"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/evanphx/columbia/abi"
 	"github.com/evanphx/columbia/log"
 )
@@ -66,8 +65,6 @@ func (p *Process) AddSignalHandler(signo int, handler int64) {
 
 	log.L.Trace("add-signal-handler", "signal", signo, "handler", handler)
 	p.signals.AddHandler(signo, handler)
-
-	spew.Dump(p.signals.Handlers)
 }
 
 // This doesn't execute the handler, it just sets up the process

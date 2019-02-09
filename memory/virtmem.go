@@ -1,7 +1,6 @@
 package memory
 
 import (
-	hclog "github.com/hashicorp/go-hclog"
 	"github.com/pkg/errors"
 )
 
@@ -147,8 +146,6 @@ func (vm *VirtualMemory) NewRegion(addr, size int32) (*Region, error) {
 			return reg, nil
 		}
 	}
-
-	hclog.L().Info("virtmem: new region", "addr", addr, "size", size)
 
 	reg := &Region{
 		Start: addr,

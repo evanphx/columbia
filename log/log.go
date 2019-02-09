@@ -6,5 +6,5 @@ var L hclog.Logger
 
 func init() {
 	L = hclog.New(&hclog.LoggerOptions{})
-	L.SetLevel(hclog.Trace)
+	L.SetLevel(hclog.Info)
 }

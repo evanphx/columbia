@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"io/ioutil"
 	"os"
 	"sync"
 
@@ -200,6 +201,34 @@ func (p *Process) CreatePipe() (*File, int, *File, int, error) {
 	p.fds = append(p.fds, read, write)
 
 	return read, rfd, write, rfd + 1, nil
+}
+
+func (p *Process) OpenFile(ctx context.Context, path string, mode int) (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	ent, err := p.Mount.LookupPath(ctx, path)
+	if err != nil {
+		return 0, err
+	}
+
+	// TODO actually consult the mode
+
+	r, err := ent.Reader()
+	if err != nil {
+		return 0, err
+	}
+
+	fd := len(p.fds)
+
+	read := &File{
+		refs: 1,
+		r:    ioutil.NopCloser(r),
+	}
+
+	p.fds = append(p.fds, read)
+
+	return fd, nil
 }
 
 func (p *Process) Fork() (*Process, error) {

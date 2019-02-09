@@ -12,7 +12,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/evanphx/columbia/device"
 	"github.com/evanphx/columbia/fs"
-	hclog "github.com/hashicorp/go-hclog"
 )
 
 type entry struct {
@@ -112,7 +111,6 @@ func (t *TarFS) LookupChild(ctx context.Context, inode *fs.Inode, name string) (
 	path := filepath.Join(inode.MountRelative, name)
 
 	entry, ok := t.entries[path]
-	hclog.L().Info("tar lookup", "path", path, "found", ok)
 
 	if !ok {
 		return nil, fs.ErrUnknownPath
