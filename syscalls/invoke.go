@@ -25,8 +25,8 @@ func (i *Invoker) InvokeSyscall(ctx context.Context, args SysArgs) int32 {
 
 		ret := f(ctx, log.L, p, args)
 
-		if p.CheckInterrupt() {
-			return -abi.EINTR
+		if p.CheckInterrupt(int64(ret)) {
+			log.L.Trace("interrupt return value", "value", ret)
 		}
 
 		return ret

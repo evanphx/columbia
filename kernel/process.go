@@ -378,7 +378,11 @@ func (p *Process) Exit(code int) {
 		p.Terminate()
 	}
 
-	p.parent.DeliverSignal(int(linux.SIGCHLD))
+	if p.parent != nil {
+		p.parent.DeliverSignal(int(linux.SIGCHLD))
+	}
+
+	log.L.Trace("process-terminated", "pid", p.Pid)
 }
 
 func (p *Process) Interrupt() {

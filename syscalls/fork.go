@@ -26,7 +26,6 @@ const (
 	WNOHANG = 1
 )
 
-// TODO: Implement WNOHANG, that's what is needed next
 func sysWait4(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs) int32 {
 	var (
 		pid      = args.Args.R0

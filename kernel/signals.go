@@ -3,7 +3,6 @@ package kernel
 import (
 	"sync"
 
-	"github.com/evanphx/columbia/abi"
 	"github.com/evanphx/columbia/log"
 )
 
@@ -71,10 +70,11 @@ func (p *Process) AddSignalHandler(signo int, handler int64) {
 // context
 func (p *Process) DeliverSignal(signo int) error {
 	p.signals.Queue(signo)
+	p.Interrupt()
 	return nil
 }
 
-func (p *Task) CheckInterrupt() bool {
+func (p *Task) CheckInterrupt(ret int64) bool {
 	signo, handler, ok := p.signals.Dequeue()
 	if !ok {
 		return false
@@ -82,6 +82,6 @@ func (p *Task) CheckInterrupt() bool {
 
 	log.L.Trace("process-setup-signal", "signal", signo, "handler", handler)
 
-	p.Vm.SetupIntoFunction(-abi.EINTR, handler, uint64(signo))
+	p.Vm.SetupIntoFunction(ret, handler, uint64(signo))
 	return true
 }
