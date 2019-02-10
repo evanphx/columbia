@@ -49,7 +49,7 @@ func (k *Kernel) SetupProcess(ctx context.Context, proc *Process, path string, a
 		return nil, err
 	}
 
-	l := loader.NewLoader()
+	l := loader.NewLoader(k.loaderCache)
 	m, err := l.Load(r, k.env)
 	if err != nil {
 		return nil, err

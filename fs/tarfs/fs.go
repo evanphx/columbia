@@ -141,7 +141,7 @@ func (t *TarFS) ReadLink(ctx context.Context, inode *fs.Inode) (string, error) {
 	return entry.hdr.Linkname, nil
 }
 
-func (t *TarFS) Reader(inode *fs.Inode) (io.Reader, error) {
+func (t *TarFS) Reader(inode *fs.Inode) (io.ReadSeeker, error) {
 	entry, ok := t.entries[inode.MountRelative]
 	if !ok {
 		return nil, fs.ErrUnknownPath

@@ -8,6 +8,6 @@ type Dirent struct {
 	Inode  *Inode
 }
 
-func (d *Dirent) Reader() (io.Reader, error) {
+func (d *Dirent) Reader() (io.ReadSeeker, error) {
 	return d.Inode.Ops.Reader(d.Inode)
 }

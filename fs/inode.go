@@ -151,7 +151,7 @@ type InodeOps interface {
 	LookupChild(ctx context.Context, inode *Inode, name string) (*Inode, error)
 	UnstableAttr(ctx context.Context, inode *Inode) (*InodeUnstableAttr, error)
 	ReadLink(ctx context.Context, inode *Inode) (string, error)
-	Reader(inode *Inode) (io.Reader, error)
+	Reader(inode *Inode) (io.ReadSeeker, error)
 }
 
 type Inode struct {
