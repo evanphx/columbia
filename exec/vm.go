@@ -63,6 +63,11 @@ type frame struct {
 	flags uint8
 }
 
+type PreparedModule struct {
+	*wasm.Module
+	funcs []function
+}
+
 // VM is the execution context for executing WebAssembly bytecode.
 type VM struct {
 	Pid  int
@@ -339,10 +344,62 @@ const wasmPageSize = 65536 // (64 KB)
 
 var endianess = binary.LittleEndian
 
+func PrepareModule(module *wasm.Module) (*PreparedModule, error) {
+	pm := &PreparedModule{
+		Module: module,
+		funcs:  make([]function, len(module.FunctionIndexSpace)),
+	}
+
+	nNatives := 0
+	for i, fn := range module.FunctionIndexSpace {
+		// Skip native methods as they need not be
+		// disassembled; simply add them at the end
+		// of the `funcs` array as is, as specified
+		// in the spec. See the "host functions"
+		// section of:
+		// https://webassembly.github.io/spec/core/exec/modules.html#allocation
+		if fn.IsHost() {
+			pm.funcs[i] = goFunction{
+				typ: fn.Host.Type(),
+				val: fn.Host,
+			}
+			nNatives++
+			continue
+		}
+
+		disassembly, err := disasm.NewDisassembly(fn, module)
+		if err != nil {
+			return nil, err
+		}
+
+		totalLocalVars := 0
+		totalLocalVars += len(fn.Sig.ParamTypes)
+		for _, entry := range fn.Body.Locals {
+			totalLocalVars += int(entry.Count)
+		}
+
+		code, table, offsets := compile.Compile(disassembly.Code)
+		pm.funcs[i] = &compiledFunction{
+			name:           fn.Body.Name,
+			code:           code,
+			branchTables:   table,
+			maxDepth:       disassembly.MaxDepth,
+			totalLocalVars: totalLocalVars,
+			args:           len(fn.Sig.ParamTypes),
+			returns:        len(fn.Sig.ReturnTypes) != 0,
+			offsets:        offsets,
+		}
+	}
+
+	return pm, nil
+}
+
 // NewVM creates a new VM from a given module. If the module defines a
 // start function, it will be executed.
-func NewVM(ctx gcontext.Context, module *wasm.Module, memory Memory) (*VM, error) {
+func NewVM(ctx gcontext.Context, pm *PreparedModule, memory Memory) (*VM, error) {
 	var vm VM
+
+	module := pm.Module
 
 	if module.Memory != nil && len(module.Memory.Entries) != 0 {
 		if len(module.Memory.Entries) > 1 {
@@ -364,51 +421,10 @@ func NewVM(ctx gcontext.Context, module *wasm.Module, memory Memory) (*VM, error
 		vm.memory = memory
 	}
 
-	vm.funcs = make([]function, len(module.FunctionIndexSpace))
+	vm.funcs = pm.funcs
 	vm.globals = make([]uint64, len(module.GlobalIndexSpace))
 	vm.newFuncTable()
 	vm.module = module
-
-	nNatives := 0
-	for i, fn := range module.FunctionIndexSpace {
-		// Skip native methods as they need not be
-		// disassembled; simply add them at the end
-		// of the `funcs` array as is, as specified
-		// in the spec. See the "host functions"
-		// section of:
-		// https://webassembly.github.io/spec/core/exec/modules.html#allocation
-		if fn.IsHost() {
-			vm.funcs[i] = goFunction{
-				typ: fn.Host.Type(),
-				val: fn.Host,
-			}
-			nNatives++
-			continue
-		}
-
-		disassembly, err := disasm.NewDisassembly(fn, module)
-		if err != nil {
-			return nil, err
-		}
-
-		totalLocalVars := 0
-		totalLocalVars += len(fn.Sig.ParamTypes)
-		for _, entry := range fn.Body.Locals {
-			totalLocalVars += int(entry.Count)
-		}
-
-		code, table, offsets := compile.Compile(disassembly.Code)
-		vm.funcs[i] = &compiledFunction{
-			name:           fn.Body.Name,
-			code:           code,
-			branchTables:   table,
-			maxDepth:       disassembly.MaxDepth,
-			totalLocalVars: totalLocalVars,
-			args:           len(fn.Sig.ParamTypes),
-			returns:        len(fn.Sig.ReturnTypes) != 0,
-			offsets:        offsets,
-		}
-	}
 
 	for i, global := range module.GlobalIndexSpace {
 		val, err := module.ExecInitExpr(global.Init)

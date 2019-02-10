@@ -8,6 +8,7 @@ import (
 
 	"golang.org/x/crypto/blake2b"
 
+	"github.com/evanphx/columbia/exec"
 	"github.com/evanphx/columbia/log"
 	"github.com/evanphx/columbia/wasm"
 	"github.com/evanphx/columbia/wasm/validate"
@@ -30,7 +31,7 @@ func NewLoaderCache() *LoaderCache {
 	return &LoaderCache{cache: cache}
 }
 
-func (l *LoaderCache) Lookup(key string) (*wasm.Module, bool) {
+func (l *LoaderCache) Lookup(key string) (*exec.PreparedModule, bool) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
@@ -39,10 +40,10 @@ func (l *LoaderCache) Lookup(key string) (*wasm.Module, bool) {
 		return nil, false
 	}
 
-	return val.(*wasm.Module), true
+	return val.(*exec.PreparedModule), true
 }
 
-func (l *LoaderCache) Set(key string, m *wasm.Module) {
+func (l *LoaderCache) Set(key string, m *exec.PreparedModule) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -117,12 +118,17 @@ func (l *Loader) Load(r io.ReadSeeker, env *wasm.Module) (*Module, error) {
 		return nil, err
 	}
 
-	if l.cache != nil {
-		log.L.Debug("cached module", "key", cacheKey)
-		l.cache.Set(cacheKey, m)
+	pm, err := exec.PrepareModule(m)
+	if err != nil {
+		return nil, err
 	}
 
-	return &Module{l, m}, nil
+	if l.cache != nil {
+		log.L.Debug("cached module", "key", cacheKey)
+		l.cache.Set(cacheKey, pm)
+	}
+
+	return &Module{l, pm}, nil
 }
 
 func (l *Loader) importer(name string) (*wasm.Module, error) {

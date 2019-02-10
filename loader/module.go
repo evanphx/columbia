@@ -1,10 +1,8 @@
 package loader
 
-import (
-	"github.com/evanphx/columbia/wasm"
-)
+import "github.com/evanphx/columbia/exec"
 
 type Module struct {
 	loader *Loader
-	Module *wasm.Module
+	Module *exec.PreparedModule
 }
