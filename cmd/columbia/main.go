@@ -11,6 +11,14 @@ import (
 	"github.com/evanphx/columbia/syscalls"
 )
 
+type closeProtect struct {
+	io.Writer
+}
+
+func (_ closeProtect) Close() error {
+	return nil
+}
+
 func main() {
 	var wi boundary.WasmInterface
 	wi.L = clog.L
@@ -36,7 +44,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	proc.HookupStdio(os.Stdin, os.Stdout, os.Stderr)
+	proc.HookupStdio(os.Stdin, closeProtect{os.Stdout}, closeProtect{os.Stderr})
 
 	err = kernel.StartProcess(proc)
 	if err != nil {
