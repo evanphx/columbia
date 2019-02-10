@@ -100,6 +100,7 @@ func NewDisassembly(fn wasm.Function, module *wasm.Module) (*Disassembly, error)
 		return nil, err
 	}
 	disas := &Disassembly{}
+	disas.Code = make([]Instr, 0, len(instrs))
 
 	// A stack of int arrays holding indices to instructions that make the stack
 	// polymorphic. Each block has its corresponding array. We start with one
@@ -376,7 +377,7 @@ func NewDisassembly(fn wasm.Function, module *wasm.Module) (*Disassembly, error)
 // Disassemble disassembles a given function body into a set of instructions. It won't check operations for validity.
 func Disassemble(code []byte, offset int64) ([]Instr, error) {
 	reader := bytes.NewReader(code)
-	var out []Instr
+	out := make([]Instr, 0, len(code)/5) // crazy rough guess to prevent constant slice growth
 	for {
 		op, err := reader.ReadByte()
 		if err == io.EOF {

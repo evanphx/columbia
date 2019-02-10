@@ -356,9 +356,10 @@ func patchOffset(code []byte, start int64, addr int64) *bytes.Buffer {
 		shift += 8
 	}
 
-	buf := new(bytes.Buffer)
-	buf.Write(code)
-	return buf
+	return bytes.NewBuffer(code)
+	// buf := new(bytes.Buffer)
+	// buf.Write(code)
+	// return buf
 }
 
 func (table *BranchTable) patchTable(block int, addr int64) {

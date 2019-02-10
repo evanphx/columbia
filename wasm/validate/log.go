@@ -12,15 +12,29 @@ import (
 
 var PrintDebugInfo = false
 
-var logger *log.Logger
-
 func init() {
-	w := ioutil.Discard
-
 	if PrintDebugInfo {
-		w = os.Stderr
-	}
+		w := ioutil.Discard
 
-	logger = log.New(w, "", log.Lshortfile)
-	log.SetFlags(log.Lshortfile)
+		w = os.Stderr
+
+		logger = log.New(w, "", log.Lshortfile)
+		log.SetFlags(log.Lshortfile)
+	} else {
+		logger = noopLogger{}
+	}
 }
+
+type LoggerInterface interface {
+	Printf(str string, args ...interface{})
+}
+
+type noopLogger struct{}
+
+func (_ noopLogger) Printf(str string, args ...interface{}) {}
+
+var (
+	realLogger *log.Logger
+	logger     LoggerInterface
+	logging    bool
+)

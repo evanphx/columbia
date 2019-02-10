@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"os"
+	"runtime/pprof"
 
 	"github.com/evanphx/columbia/boundary"
 	"github.com/evanphx/columbia/kernel"
@@ -20,6 +23,18 @@ func (_ closeProtect) Close() error {
 }
 
 func main() {
+	cpuprofile := os.Getenv("CPUPROFILE")
+	if cpuprofile != "" {
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		fmt.Printf("pprof: profiling started\n")
+	}
+
 	var wi boundary.WasmInterface
 	wi.L = clog.L
 
@@ -47,6 +62,12 @@ func main() {
 	proc.HookupStdio(os.Stdin, closeProtect{os.Stdout}, closeProtect{os.Stderr})
 
 	err = kernel.StartProcess(proc)
+
+	if cpuprofile != "" {
+		pprof.StopCPUProfile()
+		fmt.Printf("pprof: profiling finished\n")
+	}
+
 	if err != nil {
 		log.Fatal(err)
 	}

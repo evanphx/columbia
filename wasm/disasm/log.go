@@ -10,22 +10,33 @@ import (
 	"os"
 )
 
+type LoggerInterface interface {
+	Printf(str string, args ...interface{})
+}
+
+type noopLogger struct{}
+
+func (_ noopLogger) Printf(str string, args ...interface{}) {}
+
 var (
-	logger  *log.Logger
-	logging bool
+	realLogger *log.Logger
+	logger     LoggerInterface
+	logging    bool
 )
 
 func SetDebugMode(l bool) {
-	w := ioutil.Discard
-	logging = l
-
 	if l {
+		w := ioutil.Discard
+		logging = l
+
 		w = os.Stderr
+
+		realLogger = log.New(w, "", log.Lshortfile)
+		realLogger.SetFlags(log.Lshortfile)
+		logger = realLogger
+	} else {
+		logger = noopLogger{}
 	}
-
-	logger = log.New(w, "", log.Lshortfile)
-	logger.SetFlags(log.Lshortfile)
-
 }
 
 func init() {
