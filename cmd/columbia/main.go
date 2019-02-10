@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 
 	"github.com/evanphx/columbia/boundary"
@@ -49,8 +50,12 @@ func main() {
 		Kernel: kernel,
 	}
 
-	cmd := "/bin/sh"
-	args := []string{"sh", "-c", `echo "START: $(date)"`}
+	cmd := os.Args[1]
+
+	args := append([]string{filepath.Base(cmd)}, os.Args[2:]...)
+
+	// cmd := "/bin/sh"
+	// args := []string{"sh", "-c", `echo "START: $(date)"`}
 	// cmd := "/bin/signal"
 	// args := []string{"signal"}
 
