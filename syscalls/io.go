@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/binary"
 	"io"
-	"os"
 
 	"golang.org/x/sys/unix"
 
 	"github.com/evanphx/columbia/abi"
+	"github.com/evanphx/columbia/abi/linux"
+	"github.com/evanphx/columbia/abi/posix"
 	"github.com/evanphx/columbia/kernel"
 	"github.com/evanphx/columbia/log"
 	hclog "github.com/hashicorp/go-hclog"
@@ -208,18 +209,22 @@ func sysIOCTL(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs)
 		addr = args.Args.R2
 	)
 
+	type getFD interface {
+		Fd() uintptr
+	}
+
 	file, ok := p.GetFile(int(fd))
 	if !ok {
 		return -abi.EBADF
 	}
 
 	switch cmd {
-	case 21523:
-		var io *os.File
+	case posix.TIOCGWINSZ:
+		var io getFD
 
 		r, ok := file.Reader()
 		if ok {
-			io, _ = r.(*os.File)
+			io, _ = r.(getFD)
 		}
 
 		if io == nil {
@@ -229,15 +234,17 @@ func sysIOCTL(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs)
 				return -abi.EINVAL
 			}
 
-			io, _ = w.(*os.File)
+			io, _ = w.(getFD)
 		}
 
 		if io == nil {
+			l.Error("not a reader or a writer")
 			return -abi.EINVAL
 		}
 
 		ws, err := unix.IoctlGetWinsize(int(io.Fd()), unix.TIOCGWINSZ)
 		if err != nil {
+			l.Error("host error", "error", err)
 			return -abi.EINVAL
 		}
 
@@ -253,6 +260,42 @@ func sysIOCTL(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs)
 	}
 }
 
+func sysFcntl(ctx context.Context, l hclog.Logger, p *kernel.Task, args SysArgs) int32 {
+	var (
+		fd  = args.Args.R0
+		cmd = args.Args.R1
+		val = args.Args.R2
+	)
+
+	file, ok := p.GetFile(int(fd))
+	if !ok {
+		return -abi.EBADF
+	}
+
+	switch cmd {
+	case linux.F_SETFD:
+		if val != linux.FD_CLOEXEC {
+			return -abi.EINVAL
+		}
+
+		file.CloseOnExec = true
+
+		return 0
+	case linux.F_GETFD:
+		if val != linux.FD_CLOEXEC {
+			return -abi.EINVAL
+		}
+
+		if file.CloseOnExec {
+			return 1
+		}
+
+		return 0
+	}
+
+	return -abi.ENOSYS
+}
+
 func init() {
 	Syscalls[6] = sysClose
 
@@ -265,4 +308,5 @@ func init() {
 
 	Syscalls[63] = sysDup2
 	Syscalls[54] = sysIOCTL
+	Syscalls[221] = sysFcntl
 }

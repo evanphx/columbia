@@ -170,10 +170,13 @@ type Stat struct {
 	Rdev     uint64
 	Size     int64
 	Blksize  int64
-	Blocks   int32
+	Blocks   int64
 	ATime    Timespec
+	X_tpad1  int32
 	MTime    Timespec
+	X_tpad2  int32
 	CTime    Timespec
+	X_tpad3  int32
 	X_unused [3]int64
 }
 

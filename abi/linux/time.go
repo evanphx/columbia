@@ -146,6 +146,17 @@ func NsecToTimespec(nsec int64) (ts Timespec) {
 	return
 }
 
+func TimeToTimespec(t time.Time) (ts Timespec) {
+	sec := t.Unix()
+	if sec < 0 {
+		return
+	}
+
+	ts.Sec = sec
+	ts.Nsec = int32(t.Nanosecond())
+	return
+}
+
 // DurationToTimespec translates time.Duration to Timespec.
 func DurationToTimespec(dur time.Duration) Timespec {
 	return NsecToTimespec(dur.Nanoseconds())

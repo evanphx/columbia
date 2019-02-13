@@ -22,6 +22,7 @@ func (k *Kernel) InitProcess(ctx context.Context, path string, args []string, en
 	proc := &Process{
 		Kernel: k,
 		pg:     &ProcessGroup{},
+		cwd:    "/",
 	}
 
 	k.processes.AssignPid(proc)

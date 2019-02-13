@@ -29,8 +29,6 @@ func (m *MountNamespace) SetRoot(i *Inode) {
 	m.Root = &Dirent{Inode: i}
 }
 
-var ErrNotDirectory = errors.New("not a directory")
-
 func (m *MountNamespace) LookupPath(ctx context.Context, path string) (*Dirent, error) {
 	dirent, err := m.LookupDirent(ctx, path)
 	if err != nil {
@@ -54,6 +52,10 @@ func (m *MountNamespace) LookupPath(ctx context.Context, path string) (*Dirent, 
 func (m *MountNamespace) LookupDirent(ctx context.Context, path string) (*Dirent, error) {
 	if path[0] == '/' {
 		path = path[1:]
+	}
+
+	if path == "" {
+		return m.Root, nil
 	}
 
 	if val, ok := m.DirentCache.Get(path); ok {

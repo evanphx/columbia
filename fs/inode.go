@@ -5,12 +5,15 @@ import (
 	"errors"
 	"io"
 	"os"
-	"time"
+
+	"github.com/evanphx/columbia/abi/linux"
 )
 
 var (
-	ErrUnknownPath = errors.New("unknown path")
-	ErrNotSymlink  = errors.New("not symlink")
+	ErrUnknownPath    = errors.New("unknown path")
+	ErrNotSymlink     = errors.New("not symlink")
+	ErrNotDirectory   = errors.New("not a directory")
+	ErrNotImplemented = errors.New("not implemented")
 )
 
 // InodeType enumerates types of Inodes.
@@ -135,13 +138,13 @@ type InodeUnstableAttr struct {
 	UserId, GroupId int
 
 	// AccessTime is the time of last access
-	AccessTime time.Time
+	AccessTime linux.Timespec
 
 	// ModificationTime is the time of last modification.
-	ModificationTime time.Time
+	ModificationTime linux.Timespec
 
 	// StatusChangeTime is the time of last attribute modification.
-	StatusChangeTime time.Time
+	StatusChangeTime linux.Timespec
 
 	// Links is the number of hard links.
 	Links uint64
@@ -152,6 +155,7 @@ type InodeOps interface {
 	UnstableAttr(ctx context.Context, inode *Inode) (*InodeUnstableAttr, error)
 	ReadLink(ctx context.Context, inode *Inode) (string, error)
 	Reader(inode *Inode) (io.ReadSeeker, error)
+	ReadDir(ctx context.Context, inode *Inode, offset int, emit ReadDirEmit) error
 }
 
 type Inode struct {
@@ -159,4 +163,10 @@ type Inode struct {
 	MountRelative string
 
 	Ops InodeOps
+}
+
+func NewInode(ops InodeOps) *Inode {
+	return &Inode{
+		Ops: ops,
+	}
 }

@@ -3,14 +3,24 @@ package kernel
 import (
 	"io"
 	"sync"
+
+	"github.com/evanphx/columbia/fs"
 )
 
-type File struct {
-	mu   sync.Mutex
-	refs int
+type DirContext struct {
+	Offset int
+}
 
-	r io.ReadCloser
-	w io.WriteCloser
+type File struct {
+	mu          sync.Mutex
+	refs        int
+	CloseOnExec bool
+
+	Dirent *fs.Dirent
+	r      io.ReadCloser
+	w      io.WriteCloser
+
+	Context interface{}
 }
 
 func (f *File) Writer() (io.Writer, bool) {

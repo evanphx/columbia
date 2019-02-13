@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,7 +15,7 @@ import (
 )
 
 type closeProtect struct {
-	io.Writer
+	*os.File
 }
 
 func (_ closeProtect) Close() error {

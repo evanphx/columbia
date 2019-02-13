@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/evanphx/columbia/abi/linux"
@@ -88,7 +89,13 @@ type Process struct {
 	signals       Signals
 	interruptFunc func()
 
+	cwd string
+
 	mu sync.Mutex
+}
+
+func (p *Process) Curwd() string {
+	return p.cwd
 }
 
 func (p *Process) PrintStack() {
@@ -207,9 +214,27 @@ func (p *Process) OpenFile(ctx context.Context, path string, mode int) (int, err
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(p.Curwd(), path)
+	}
+
 	ent, err := p.Mount.LookupPath(ctx, path)
 	if err != nil {
 		return 0, err
+	}
+
+	if mode&linux.O_DIRECTORY != 0 {
+		fd := len(p.fds)
+
+		dir := &File{
+			refs:    1,
+			Dirent:  ent,
+			Context: &DirContext{},
+		}
+
+		p.fds = append(p.fds, dir)
+
+		return fd, nil
 	}
 
 	// TODO actually consult the mode
@@ -239,6 +264,7 @@ func (p *Process) Fork() (*Process, error) {
 		Kernel: p.Kernel,
 		parent: p,
 		pg:     p.pg,
+		cwd:    p.cwd,
 	}
 
 	p.Kernel.processes.AssignPid(child)
@@ -248,8 +274,12 @@ func (p *Process) Fork() (*Process, error) {
 	child.Mem = p.Mem.Fork()
 
 	for _, file := range p.fds {
-		file.incRef()
-		child.fds = append(child.fds, file)
+		if file.CloseOnExec {
+			child.fds = append(child.fds, nil) // got to keep those indexes the same
+		} else {
+			file.incRef()
+			child.fds = append(child.fds, file)
+		}
 	}
 
 	ctx := context.Background()

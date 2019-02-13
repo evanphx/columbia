@@ -11,3 +11,7 @@ type Dirent struct {
 func (d *Dirent) Reader() (io.ReadSeeker, error) {
 	return d.Inode.Ops.Reader(d.Inode)
 }
+
+type ReadDirEmit interface {
+	EmitEntry(name string, inode *Inode) bool
+}

@@ -1,7 +1,13 @@
 package log
 
-import hclog "github.com/hashicorp/go-hclog"
+import (
+	"os"
+
+	hclog "github.com/hashicorp/go-hclog"
+)
 
 func EnableDebug() {
-	L.SetLevel(hclog.Trace)
+	if str := os.Getenv("TRACE"); str != "" {
+		L.SetLevel(hclog.Trace)
+	}
 }

@@ -29,6 +29,8 @@ func (i *Invoker) InvokeSyscall(ctx context.Context, args SysArgs) int32 {
 			log.L.Trace("interrupt return value", "value", ret)
 		}
 
+		log.L.Trace("syscall/ret", "pid", p.Pid, "value", ret)
+
 		return ret
 	}
 
