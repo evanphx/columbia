@@ -159,14 +159,13 @@ type InodeOps interface {
 }
 
 type Inode struct {
-	StableAttr    InodeStableAttr
-	MountRelative string
-
-	Ops InodeOps
+	StableAttr InodeStableAttr
+	Ops        InodeOps
 }
 
-func NewInode(ops InodeOps) *Inode {
+func NewInode(attr InodeStableAttr, ops InodeOps) *Inode {
 	return &Inode{
-		Ops: ops,
+		StableAttr: attr,
+		Ops:        ops,
 	}
 }

@@ -67,7 +67,7 @@ func findParent(root *Dir, name string) (*Dir, error) {
 			ch := &Dir{
 				Children: make(map[string]*fs.Inode),
 			}
-			parent.Children[sec] = fs.NewInode(ch)
+			parent.Children[sec] = fs.NewInode(fs.InodeStableAttr{Type: fs.Directory}, ch)
 		}
 
 		dir, ok := ch.Ops.(*Dir)
@@ -138,8 +138,7 @@ func NewTarFS(r io.Reader) (*TarFS, error) {
 
 		// root!
 		if name == "./" || name == "." {
-			rootInode = fs.NewInode(root)
-			rootInode.StableAttr = attr
+			rootInode = fs.NewInode(attr, root)
 			root.Unstable = us
 			continue
 		}
@@ -178,7 +177,7 @@ func NewTarFS(r io.Reader) (*TarFS, error) {
 	}
 
 	if rootInode == nil {
-		rootInode = fs.NewInode(root)
+		rootInode = fs.NewInode(fs.InodeStableAttr{Type: fs.Directory}, root)
 	}
 
 	t.root = rootInode

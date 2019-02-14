@@ -12,6 +12,7 @@ import (
 	"github.com/evanphx/columbia/kernel"
 	clog "github.com/evanphx/columbia/log"
 	"github.com/evanphx/columbia/syscalls"
+	"github.com/spf13/pflag"
 )
 
 type closeProtect struct {
@@ -21,6 +22,10 @@ type closeProtect struct {
 func (_ closeProtect) Close() error {
 	return nil
 }
+
+var (
+	fRoot = pflag.StringP("root", "r", "", "directory to mount as the root")
+)
 
 func main() {
 	cpuprofile := os.Getenv("CPUPROFILE")
@@ -34,6 +39,8 @@ func main() {
 		}
 		fmt.Printf("pprof: profiling started\n")
 	}
+
+	pflag.Parse()
 
 	var wi boundary.WasmInterface
 	wi.L = clog.L
@@ -49,16 +56,13 @@ func main() {
 		Kernel: kernel,
 	}
 
-	cmd := os.Args[1]
+	inputArgs := pflag.Args()
 
-	args := append([]string{filepath.Base(cmd)}, os.Args[2:]...)
+	cmd := inputArgs[0]
 
-	// cmd := "/bin/sh"
-	// args := []string{"sh", "-c", `echo "START: $(date)"`}
-	// cmd := "/bin/signal"
-	// args := []string{"signal"}
+	args := append([]string{filepath.Base(cmd)}, inputArgs[1:]...)
 
-	proc, err := kernel.InitProcess(ctx, cmd, args, os.Environ())
+	proc, err := kernel.InitProcess(ctx, cmd, args, os.Environ(), *fRoot)
 	if err != nil {
 		log.Fatal(err)
 	}

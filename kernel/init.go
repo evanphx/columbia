@@ -8,6 +8,7 @@ import (
 
 	"github.com/evanphx/columbia/exec"
 	"github.com/evanphx/columbia/loader"
+	"github.com/evanphx/columbia/log"
 	"github.com/evanphx/columbia/memory"
 )
 
@@ -18,7 +19,7 @@ func (k *Kernel) StartProcess(proc *Process) error {
 
 var ErrNoStart = errors.New("no _start function defined")
 
-func (k *Kernel) InitProcess(ctx context.Context, path string, args []string, env []string) (*Process, error) {
+func (k *Kernel) InitProcess(ctx context.Context, path string, args []string, env []string, root string) (*Process, error) {
 	proc := &Process{
 		Kernel: k,
 		pg:     &ProcessGroup{},
@@ -27,10 +28,12 @@ func (k *Kernel) InitProcess(ctx context.Context, path string, args []string, en
 
 	k.processes.AssignPid(proc)
 
-	err := proc.SetupTar("tmp/test.tar")
+	err := proc.SetupHost(root) // Tar("tmp/test.tar")
 	if err != nil {
 		return nil, err
 	}
+
+	log.L.Trace("setting up process")
 
 	task := &Task{Process: proc}
 
@@ -40,6 +43,8 @@ func (k *Kernel) InitProcess(ctx context.Context, path string, args []string, en
 }
 
 func (k *Kernel) SetupProcess(ctx context.Context, proc *Process, path string, args []string, env []string) (*Process, error) {
+	log.L.Trace("kernel/setup-process loading entrypoint", "path", path)
+
 	dirent, err := proc.Mount.LookupPath(ctx, path)
 	if err != nil {
 		return nil, err

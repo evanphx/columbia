@@ -14,6 +14,7 @@ import (
 	"github.com/evanphx/columbia/abi/linux"
 	"github.com/evanphx/columbia/exec"
 	"github.com/evanphx/columbia/fs"
+	"github.com/evanphx/columbia/fs/host"
 	"github.com/evanphx/columbia/fs/tarfs"
 	"github.com/evanphx/columbia/log"
 	"github.com/evanphx/columbia/memory"
@@ -123,6 +124,27 @@ func (p *Process) SetupTar(path string) error {
 
 	p.Mount = fs.NewMountNamespace()
 	p.Mount.Root = &fs.Dirent{
+		Name:  "/",
+		Inode: root,
+	}
+
+	return nil
+}
+
+func (p *Process) SetupHost(path string) error {
+	hf, err := host.NewHostFS(path)
+	if err != nil {
+		return err
+	}
+
+	root, err := hf.Root()
+	if err != nil {
+		return err
+	}
+
+	p.Mount = fs.NewMountNamespace()
+	p.Mount.Root = &fs.Dirent{
+		Name:  "/",
 		Inode: root,
 	}
 
