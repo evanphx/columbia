@@ -386,8 +386,6 @@ func Disassemble(code []byte, offset int64) ([]Instr, error) {
 			return nil, err
 		}
 
-		offset++
-
 		opStr, err := ops.New(op)
 		if err != nil {
 			return nil, err
@@ -396,6 +394,8 @@ func Disassemble(code []byte, offset int64) ([]Instr, error) {
 			Op:     opStr,
 			Offset: offset,
 		}
+
+		offset++
 
 		switch op {
 		case ops.Block, ops.Loop, ops.If:

@@ -27,6 +27,8 @@ type Section interface {
 	// WritePayload writes a section payload without the size.
 	// Caller should calculate written size and add it before the payload.
 	WritePayload(w io.Writer) error
+
+	Description() string
 }
 
 // SectionID is a 1-byte code that encodes the section code of both known and custom sections.
@@ -214,8 +216,13 @@ func (m *Module) readSection(r *readpos.ReadPos) (bool, error) {
 		}
 	case SectionIDCustom:
 		cust := sec.(*SectionCustom)
-		if cust.Name == "name" {
+		switch cust.Name {
+		case "name":
 			m.readNames(cust)
+		case "columbia.rel.CODE":
+			m.readCodeRelocs(cust)
+		case "columbia.rel.DATA":
+			m.readDataRelocs(cust)
 		}
 	}
 	m.Sections = append(m.Sections, sec)
@@ -245,6 +252,8 @@ func (m *Module) readNames(sec *SectionCustom) error {
 			return err
 		}
 
+		m.FunctionNames = make(map[int]string)
+
 		for i := 0; i < int(num); i++ {
 			index, err := leb128.ReadVarUint32(r)
 			if err != nil {
@@ -256,16 +265,73 @@ func (m *Module) readNames(sec *SectionCustom) error {
 				return err
 			}
 
-			numImports := len(m.Import.Entries)
-
-			if int(index) < numImports {
-				m.Import.Entries[index].Name = name
-			} else {
-				localIndex := int(index) - numImports
-				m.Code.Bodies[localIndex].Name = name
-			}
+			m.FunctionNames[int(index)] = name
 		}
 	}
+}
+
+func (m *Module) readRelocs(sec *SectionCustom) ([]Reloc, error) {
+	r := bytes.NewReader(sec.Data)
+
+	_, err := leb128.ReadVarUint32(r)
+	if err != nil {
+		return nil, err
+	}
+
+	total, err := leb128.ReadVarUint32(r)
+	if err != nil {
+		return nil, err
+	}
+
+	relocs := make([]Reloc, total)
+
+	for i := 0; i < int(total); i++ {
+		typ, err := leb128.ReadVarUint32(r)
+		if err != nil {
+			return nil, err
+		}
+
+		offset, err := leb128.ReadVarUint32(r)
+		if err != nil {
+			return nil, err
+		}
+
+		var addend uint32
+
+		if typ == 3 || typ == 4 || typ == 5 {
+			addend, err = leb128.ReadVarUint32(r)
+		}
+
+		relocs[i] = Reloc{
+			Type:   typ,
+			Offset: offset,
+			Addend: addend,
+		}
+	}
+
+	return relocs, nil
+}
+
+func (m *Module) readCodeRelocs(sec *SectionCustom) error {
+	relocs, err := m.readRelocs(sec)
+	if err != nil {
+		return err
+	}
+
+	m.CodeRelocations = relocs
+
+	return nil
+}
+
+func (m *Module) readDataRelocs(sec *SectionCustom) error {
+	relocs, err := m.readRelocs(sec)
+	if err != nil {
+		return err
+	}
+
+	m.DataRelocations = relocs
+
+	return nil
 }
 
 var _ Section = (*SectionCustom)(nil)
@@ -278,6 +344,10 @@ type SectionCustom struct {
 
 func (s *SectionCustom) SectionID() SectionID {
 	return SectionIDCustom
+}
+
+func (s *SectionCustom) Description() string {
+	return fmt.Sprintf("custom\t%s\tsize=%d\n", s.Name, len(s.Data))
 }
 
 func (s *SectionCustom) ReadPayload(r io.Reader) error {
@@ -313,6 +383,10 @@ type SectionTypes struct {
 
 func (*SectionTypes) SectionID() SectionID {
 	return SectionIDType
+}
+
+func (s *SectionTypes) Description() string {
+	return fmt.Sprintf("types\t\tentries=%d\n", len(s.Entries))
 }
 
 func (s *SectionTypes) ReadPayload(r io.Reader) error {
@@ -352,6 +426,10 @@ type SectionImports struct {
 
 func (*SectionImports) SectionID() SectionID {
 	return SectionIDImport
+}
+
+func (s *SectionImports) Description() string {
+	return fmt.Sprintf("imports\t\tentries=%d\n", len(s.Entries))
 }
 
 func (s *SectionImports) ReadPayload(r io.Reader) error {
@@ -460,6 +538,10 @@ func (*SectionFunctions) SectionID() SectionID {
 	return SectionIDFunction
 }
 
+func (s *SectionFunctions) Description() string {
+	return fmt.Sprintf("funcs\t\ttypes=%d\n", len(s.Types))
+}
+
 func (s *SectionFunctions) ReadPayload(r io.Reader) error {
 	count, err := leb128.ReadVarUint32(r)
 	if err != nil {
@@ -496,6 +578,10 @@ type SectionTables struct {
 
 func (*SectionTables) SectionID() SectionID {
 	return SectionIDTable
+}
+
+func (s *SectionTables) Description() string {
+	return fmt.Sprintf("tables\t\tentries=%d\n", len(s.Entries))
 }
 
 func (s *SectionTables) ReadPayload(r io.Reader) error {
@@ -535,6 +621,10 @@ func (*SectionMemories) SectionID() SectionID {
 	return SectionIDMemory
 }
 
+func (s *SectionMemories) Description() string {
+	return fmt.Sprintf("memories\t\tentries=%d\n", len(s.Entries))
+}
+
 func (s *SectionMemories) ReadPayload(r io.Reader) error {
 	count, err := leb128.ReadVarUint32(r)
 	if err != nil {
@@ -570,6 +660,10 @@ type SectionGlobals struct {
 
 func (*SectionGlobals) SectionID() SectionID {
 	return SectionIDGlobal
+}
+
+func (s *SectionGlobals) Description() string {
+	return fmt.Sprintf("globals\t\tglobals=%d\n", len(s.Globals))
 }
 
 func (s *SectionGlobals) ReadPayload(r io.Reader) error {
@@ -634,6 +728,10 @@ type SectionExports struct {
 
 func (*SectionExports) SectionID() SectionID {
 	return SectionIDExport
+}
+
+func (s *SectionExports) Description() string {
+	return fmt.Sprintf("exports\t\texports=%d\n", len(s.Entries))
 }
 
 func (s *SectionExports) ReadPayload(r io.Reader) error {
@@ -729,6 +827,10 @@ func (*SectionStartFunction) SectionID() SectionID {
 	return SectionIDStart
 }
 
+func (s *SectionStartFunction) Description() string {
+	return fmt.Sprintf("start\t\tindex=%d\n", s.Index)
+}
+
 func (s *SectionStartFunction) ReadPayload(r io.Reader) error {
 	var err error
 	s.Index, err = leb128.ReadVarUint32(r)
@@ -748,6 +850,10 @@ type SectionElements struct {
 
 func (*SectionElements) SectionID() SectionID {
 	return SectionIDElement
+}
+
+func (s *SectionElements) Description() string {
+	return fmt.Sprintf("elems\t\tentries=%d\n", len(s.Entries))
 }
 
 func (s *SectionElements) ReadPayload(r io.Reader) error {
@@ -833,11 +939,15 @@ func (s *ElementSegment) MarshalWASM(w io.Writer) error {
 // SectionCode describes the body for every function declared inside a module.
 type SectionCode struct {
 	RawSection
-	Bodies []FunctionBody
+	Bodies []*FunctionBody
 }
 
 func (*SectionCode) SectionID() SectionID {
 	return SectionIDCode
+}
+
+func (s *SectionCode) Description() string {
+	return fmt.Sprintf("code\t\tbodies=%d\n", len(s.Bodies))
 }
 
 func (s *SectionCode) ReadPayload(r io.Reader) error {
@@ -845,16 +955,18 @@ func (s *SectionCode) ReadPayload(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	s.Bodies = make([]FunctionBody, count)
+	s.Bodies = make([]*FunctionBody, count)
 	logger.Printf("%d function bodies\n", count)
 
-	offset := int64(encSize) + 1 // Unsure why the dwarf entries are 1 further....
+	offset := int64(encSize) // + 1 // Unsure why the dwarf entries are 3 further....
 	for i := range s.Bodies {
 		logger.Printf("Reading function %d\n", i)
-		offset, err = s.Bodies[i].UnmarshalWASM(r, offset)
+		var fb FunctionBody
+		offset, err = fb.UnmarshalWASM(r, offset)
 		if err != nil {
 			return err
 		}
+		s.Bodies[i] = &fb
 	}
 	return nil
 }
@@ -874,20 +986,23 @@ func (s *SectionCode) WritePayload(w io.Writer) error {
 var ErrFunctionNoEnd = errors.New("Function body does not end with 0x0b (end)")
 
 type FunctionBody struct {
-	Module *Module // The parent module containing this function body, for execution purposes
-	Name   string  // comes from name section (might not be set)
-	Loc    int64
-	Locals []LocalEntry
-	Code   []byte
+	Module   *Module // The parent module containing this function body, for execution purposes
+	Name     string  // comes from name section (might not be set)
+	StartLoc int64
+	Loc      int64
+	Locals   []LocalEntry
+	Code     []byte
 }
 
 func (f *FunctionBody) UnmarshalWASM(r io.Reader, offset int64) (int64, error) {
-	f.Loc = offset
+	f.StartLoc = offset
 
 	bodySize, encSize, err := leb128.ReadVarUint32Size(r)
 	if err != nil {
 		return 0, err
 	}
+
+	f.Loc = offset + int64(encSize)
 
 	offset += int64(encSize) + int64(bodySize)
 
@@ -899,7 +1014,7 @@ func (f *FunctionBody) UnmarshalWASM(r io.Reader, offset int64) (int64, error) {
 
 	bytesReader := bytes.NewBuffer(body)
 
-	localCount, err := leb128.ReadVarUint32(bytesReader)
+	localCount, encSize, err := leb128.ReadVarUint32Size(bytesReader)
 	if err != nil {
 		return 0, err
 	}
@@ -916,11 +1031,13 @@ func (f *FunctionBody) UnmarshalWASM(r io.Reader, offset int64) (int64, error) {
 	code := bytesReader.Bytes()
 	logger.Printf("Read %d bytes for function body", len(code))
 
+	f.Loc += int64(int(bodySize) - len(code))
+
 	if code[len(code)-1] != end {
 		return 0, ErrFunctionNoEnd
 	}
 
-	f.Code = code[:len(code)-1]
+	f.Code = code // [:len(code)-1]
 
 	return offset, nil
 }
@@ -981,6 +1098,10 @@ type SectionData struct {
 
 func (*SectionData) SectionID() SectionID {
 	return SectionIDData
+}
+
+func (s *SectionData) Description() string {
+	return fmt.Sprintf("data\t\tentries=%d\n", len(s.Entries))
 }
 
 func (s *SectionData) ReadPayload(r io.Reader) error {

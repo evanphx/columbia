@@ -33,6 +33,25 @@ func (e InvalidLinearMemoryIndexError) Error() string {
 // Functions for populating and looking up entries in a module's index space.
 // More info: http://webassembly.org/docs/modules/#function-index-space
 
+func (m *Module) Functions() ([]Function, error) {
+	var funcs []Function
+
+	for codeIndex, typeIndex := range m.Function.Types {
+		if int(typeIndex) >= len(m.Types.Entries) {
+			return nil, InvalidFunctionIndexError(typeIndex)
+		}
+
+		fn := Function{
+			Sig:  &m.Types.Entries[typeIndex],
+			Body: m.Code.Bodies[codeIndex],
+		}
+
+		funcs = append(funcs, fn)
+	}
+
+	return funcs, nil
+}
+
 func (m *Module) populateFunctions() error {
 	if m.Types == nil || m.Function == nil {
 		return nil
@@ -45,7 +64,7 @@ func (m *Module) populateFunctions() error {
 
 		fn := Function{
 			Sig:  &m.Types.Entries[typeIndex],
-			Body: &m.Code.Bodies[codeIndex],
+			Body: m.Code.Bodies[codeIndex],
 		}
 
 		m.FunctionIndexSpace = append(m.FunctionIndexSpace, fn)
@@ -62,6 +81,7 @@ func (m *Module) populateFunctions() error {
 // the function index space. Returns nil when the index is invalid
 func (m *Module) GetFunction(i int) *Function {
 	if i >= len(m.FunctionIndexSpace) || i < 0 {
+		panic(fmt.Sprintf("request for invalid function %d", i))
 		return nil
 	}
 
